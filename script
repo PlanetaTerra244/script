@@ -1,0 +1,161 @@
+--[[ 
+  Script: Pedro Xitos Rainbow Nickname GUI
+  Jogo: Brookhaven 🏡RP (Roblox)
+  Cria um painel local chamado "pedro xitos" com um botão para deixar o nick do player em rainbow (mudando de cor constantemente).
+  Autor: PlanetaTerra244
+]]
+
+-- Função que retorna uma cor do arco-íris baseada no tempo
+local function getRainbowColor()
+    local t = tick() % 6
+    local part = t % 1
+    if t < 1 then
+        return Color3.new(1, part, 0)
+    elseif t < 2 then
+        return Color3.new(1 - part, 1, 0)
+    elseif t < 3 then
+        return Color3.new(0, 1, part)
+    elseif t < 4 then
+        return Color3.new(0, 1 - part, 1)
+    elseif t < 5 then
+        return Color3.new(part, 0, 1)
+    else
+        return Color3.new(1, 0, 1 - part)
+    end
+end
+
+-- Função para encontrar e retornar o BillboardGui (onde está o nick)
+local function getNameBillboard()
+    local char = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
+    for _,v in pairs(char:GetChildren()) do
+        if v:IsA("BillboardGui") then
+            -- Em Brookhaven normalmente o nome está em um BillboardGui
+            if v:FindFirstChildWhichIsA("TextLabel") then
+                return v:FindFirstChildWhichIsA("TextLabel")
+            end
+        end
+    end
+    -- Alternativa: tentar no Humanoid.DisplayName (caso o jogo mude o método)
+    if char:FindFirstChild("Head") then
+        for _,v in pairs(char.Head:GetChildren()) do
+            if v:IsA("BillboardGui") and v:FindFirstChildWhichIsA("TextLabel") then
+                return v:FindFirstChildWhichIsA("TextLabel")
+            end
+        end
+    end
+    return nil
+end
+
+-- Criação da GUI
+local player = game.Players.LocalPlayer
+local gui = Instance.new("ScreenGui")
+gui.Name = "PedroXitosGUI"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 240, 0, 110)
+frame.Position = UDim2.new(0.5, -120, 0.5, -55)
+frame.BackgroundColor3 = Color3.fromRGB(35, 35, 60)
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundTransparency = 1
+title.Text = "pedro xitos"
+title.Font = Enum.Font.GothamBold
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 22
+title.Parent = frame
+
+local rainbowBtn = Instance.new("TextButton")
+rainbowBtn.Size = UDim2.new(0.7, 0, 0, 36)
+rainbowBtn.Position = UDim2.new(0.15, 0, 0.5, 0)
+rainbowBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 255)
+rainbowBtn.Text = "Rainbow Nick"
+rainbowBtn.Font = Enum.Font.GothamBold
+rainbowBtn.TextColor3 = Color3.fromRGB(255,255,255)
+rainbowBtn.TextSize = 20
+rainbowBtn.Parent = frame
+
+local status = Instance.new("TextLabel")
+status.Size = UDim2.new(1, 0, 0, 25)
+status.Position = UDim2.new(0, 0, 1, -25)
+status.BackgroundTransparency = 1
+status.Text = ""
+status.Font = Enum.Font.Gotham
+status.TextColor3 = Color3.fromRGB(200, 255, 200)
+status.TextSize = 16
+status.Parent = frame
+
+-- Minimizar botão
+local minBtn = Instance.new("TextButton")
+minBtn.Size = UDim2.new(0, 30, 0, 30)
+minBtn.Position = UDim2.new(1, -35, 0, 5)
+minBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 120)
+minBtn.Text = "-"
+minBtn.Font = Enum.Font.GothamBlack
+minBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+minBtn.TextSize = 24
+minBtn.Parent = frame
+
+local minimized = false
+minBtn.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    rainbowBtn.Visible = not minimized
+    status.Visible = not minimized
+    frame.Size = minimized and UDim2.new(0, 240, 0, 35) or UDim2.new(0, 240, 0, 110)
+    minBtn.Text = minimized and "+" or "-"
+end)
+
+-- Rainbow ativação
+local running = false
+local rainbowConn = nil
+rainbowBtn.MouseButton1Click:Connect(function()
+    running = not running
+    if running then
+        rainbowBtn.Text = "Rainbow (on)"
+        status.Text = "Nick Rainbow ativado!"
+        -- Thread para atualizar cor
+        rainbowConn = game:GetService("RunService").RenderStepped:Connect(function()
+            local nick = getNameBillboard()
+            if nick then
+                nick.TextColor3 = getRainbowColor()
+            end
+        end)
+    else
+        rainbowBtn.Text = "Rainbow Nick"
+        status.Text = "Nick Rainbow desligado."
+        if rainbowConn then
+            rainbowConn:Disconnect()
+            rainbowConn = nil
+        end
+        -- Resetar cor para branco ao desligar
+        local nick = getNameBillboard()
+        if nick then
+            nick.TextColor3 = Color3.fromRGB(255,255,255)
+        end
+    end
+    wait(1.5)
+    status.Text = ""
+end)
+
+-- Caso resetar o personagem, reaplica o efeito
+player.CharacterAdded:Connect(function()
+    if running and rainbowConn then
+        rainbowConn:Disconnect()
+        rainbowConn = nil
+    end
+    if running then
+        wait(1)
+        rainbowConn = game:GetService("RunService").RenderStepped:Connect(function()
+            local nick = getNameBillboard()
+            if nick then
+                nick.TextColor3 = getRainbowColor()
+            end
+        end)
+    end
+end)
